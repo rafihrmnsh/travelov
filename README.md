@@ -1,5 +1,7 @@
 # Travelov
 
+[![CI](https://github.com/rafihrmnsh/travelov/actions/workflows/ci.yml/badge.svg)](https://github.com/rafihrmnsh/travelov/actions/workflows/ci.yml)
+
 A mini hotel-booking web app in the spirit of Traveloka — built as a portfolio project targeting
 .NET entry/mid-level roles. Search hotels, check per-date availability, book a room, pay through a
 sandbox gateway, and manage everything from an admin dashboard.
@@ -108,10 +110,36 @@ booking history → admin checks:
 API=http://localhost:5080 ./scripts/smoke-test.sh
 ```
 
+## Tests
+
+The backend ships unit and integration tests under `backend/tests/`.
+
+```bash
+# Unit tests — pure domain rules and request validation, no external dependencies
+dotnet test backend/tests/Travelov.UnitTests/Travelov.UnitTests.csproj
+
+# Integration tests — real services against a disposable PostgreSQL container (needs Docker)
+dotnet test backend/tests/Travelov.IntegrationTests/Travelov.IntegrationTests.csproj
+
+# Everything at once
+dotnet test backend/Travelov.sln
+```
+
+- **`Travelov.UnitTests`** covers pricing (11% PPN), the per-night inventory guards,
+  the booking state machine, and `CreateBookingRequest` validation.
+- **`Travelov.IntegrationTests`** runs the real `BookingService` and `PaymentService`
+  against a throwaway `postgres:16-alpine` container (via Testcontainers). It proves two
+  guests racing for the last room can never oversell it — the PostgreSQL `xmin` row version
+  rejects the losing write — and that payment callbacks are idempotent, including the
+  late-payment expiry path that returns stock to the pool.
+
+Both suites run in CI (`.github/workflows/ci.yml`).
+
 ## Project structure
 
 ```
 Travelov/
+├── .github/workflows/  # CI (build + unit/integration tests + frontend build)
 ├── backend/            # .NET solution
 │   ├── src/            # Domain, Application, Infrastructure, Api
 │   ├── tests/          # Travelov.UnitTests, Travelov.IntegrationTests
